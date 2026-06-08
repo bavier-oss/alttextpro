@@ -2,7 +2,17 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+1. Create `.env.local` and configure TokenHub (OpenAI-compatible gateway):
+
+```bash
+OPENAI_API_KEY=th-your_tokenhub_api_key
+OPENAI_BASE_URL=https://tokenhub-gateway.zerozero.cn/openai/v1
+OPENAI_MODEL=gpt-5.4
+```
+
+Create the API key in the [TokenHub console](https://tokenhub.zerozero.cn).
+
+2. Run the development server:
 
 ```bash
 npm run dev
@@ -14,7 +24,14 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Alt Text Flow
+
+- Upload a single image on the home page.
+- Click `生成 alt text` to request generated Chinese alt text.
+- Wait for loading to finish, then copy result via `复制 alt text`.
+- If the API fails, the UI shows a friendly message: `生成失败，请重试`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
