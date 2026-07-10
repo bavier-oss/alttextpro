@@ -3,11 +3,20 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --theme-primary: #1677ff;
+  --theme-primary-hover: #4096ff;
+  --theme-primary-dark: #0958d9;
+  --theme-gradient-start: #e6f4ff;
+  --theme-gradient-mid: #bae0ff;
+  --theme-gradient-end: #69b1ff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-theme: var(--theme-primary);
+  --color-theme-hover: var(--theme-primary-hover);
+  --color-theme-dark: var(--theme-primary-dark);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,7 +25,19 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --theme-gradient-start: #0a1628;
+    --theme-gradient-mid: #0d2137;
+    --theme-gradient-end: #102a4c;
   }
+}
+
+.home-gradient-bg {
+  background: linear-gradient(
+    135deg,
+    var(--theme-gradient-start) 0%,
+    var(--theme-gradient-mid) 45%,
+    var(--theme-gradient-end) 100%
+  );
 }
 
 body {
