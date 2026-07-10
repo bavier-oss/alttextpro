@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type GenerateResponse = {
   altText?: string;
@@ -9,11 +9,28 @@ type GenerateResponse = {
 };
 
 export default function Home() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [altText, setAltText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  function handleFileSelect(file: File | null) {
+    setSelectedFile(file);
+    setAltText("");
+    setErrorMessage("");
+    setCopySuccess(false);
+  }
+
+  function handleClearFile(event: React.MouseEvent) {
+    event.stopPropagation();
+    handleFileSelect(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
 
   const previewUrl = useMemo(() => {
     if (!selectedFile) return "";
@@ -81,30 +98,84 @@ export default function Home() {
             Alt Text Pro —— Free AI Alt Text Generator!
           </h1>
 
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => {
-              const file = event.target.files?.[0] ?? null;
-              setSelectedFile(file);
-              setAltText("");
-              setErrorMessage("");
-              setCopySuccess(false);
+          <div
+            role={previewUrl ? undefined : "button"}
+            tabIndex={previewUrl ? undefined : 0}
+            onClick={previewUrl ? undefined : () => fileInputRef.current?.click()}
+            onKeyDown={
+              previewUrl
+                ? undefined
+                : (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }
+            }
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
             }}
-            className="block w-full cursor-pointer rounded-lg border border-zinc-300 p-2 text-sm text-zinc-800 dark:border-zinc-700 dark:text-zinc-200"
-          />
-
-          {previewUrl ? (
-            <div className="relative h-64 w-full overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
-              <Image
-                src={previewUrl}
-                alt="上传预览图"
-                fill
-                className="object-contain"
-                unoptimized
-              />
-            </div>
-          ) : null}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+              const file = event.dataTransfer.files?.[0] ?? null;
+              if (file?.type.startsWith("image/")) {
+                handleFileSelect(file);
+              }
+            }}
+            className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed text-center transition-colors ${
+              previewUrl
+                ? "border-zinc-200 p-2 dark:border-zinc-800"
+                : `cursor-pointer px-4 py-8 ${
+                    isDragging
+                      ? "border-theme bg-theme/5"
+                      : "border-zinc-300 hover:border-theme hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                  }`
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                handleFileSelect(file);
+              }}
+            />
+            {previewUrl ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleClearFile}
+                  aria-label="删除图片"
+                  className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/70 text-sm text-white transition-colors hover:bg-zinc-900 dark:bg-zinc-100/80 dark:text-zinc-900 dark:hover:bg-zinc-100"
+                >
+                  ×
+                </button>
+                <div className="relative h-64 w-full overflow-hidden rounded-md">
+                  <Image
+                    src={previewUrl}
+                    alt="上传预览图"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  点击或拖拽图片到此处上传
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  支持JPG、PNG、Webp等格式，建议单张 5MB 以内
+                </p>
+              </>
+            )}
+          </div>
 
           <button
             type="button"
