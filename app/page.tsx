@@ -113,14 +113,14 @@ function SegmentedControl<T extends string>({
     <div className="min-w-0">
       <p
         id={labelId}
-        className="mb-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400"
+        className="mb-1.5 font-mono text-[11px] font-medium tracking-wide text-muted uppercase"
       >
         {label}
       </p>
       <div
         role="radiogroup"
         aria-labelledby={labelId}
-        className="flex w-full min-w-0 flex-wrap gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-900"
+        className="flex w-full min-w-0 flex-wrap gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--control-bg)] p-1"
       >
         {options.map((option) => {
           const selected = value === option.value;
@@ -135,13 +135,13 @@ function SegmentedControl<T extends string>({
               onClick={() => onChange(option.value)}
               className={`inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs sm:text-sm ${
                 selected
-                  ? "border border-zinc-900 bg-white font-semibold text-zinc-900 shadow-sm dark:border-zinc-100 dark:bg-zinc-800 dark:text-zinc-100"
-                  : "border border-transparent font-normal text-zinc-600 hover:bg-white/70 dark:text-zinc-400 dark:hover:bg-zinc-800/70"
+                  ? "border border-[var(--border-strong)] bg-surface font-semibold text-foreground"
+                  : "border border-transparent font-normal text-muted hover:bg-surface/60"
               } disabled:cursor-not-allowed disabled:opacity-50`}
             >
               <span
                 aria-hidden="true"
-                className={`text-[10px] leading-none ${
+                className={`font-mono text-[10px] leading-none ${
                   selected ? "opacity-100" : "opacity-0"
                 }`}
               >
@@ -197,6 +197,10 @@ export default function Home() {
   const [scenario, setScenario] = useState<Scenario>("a11y");
   const [descriptionLength, setDescriptionLength] =
     useState<DescriptionLength>("standard");
+  const [uploadScanToken, setUploadScanToken] = useState(0);
+  const [showUploadScan, setShowUploadScan] = useState(false);
+  const [resultRevealKey, setResultRevealKey] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   function resetFileInput() {
     if (fileInputRef.current) {
@@ -210,6 +214,8 @@ export default function Home() {
     setErrorMessage("");
     setUploadError(null);
     setCopySuccess(false);
+    setShowUploadScan(false);
+    setUploadScanToken(0);
     resetFileInput();
   }
 
@@ -248,6 +254,9 @@ export default function Home() {
     setErrorMessage("");
     setUploadError(null);
     setCopySuccess(false);
+    if (!prefersReducedMotion) {
+      setUploadScanToken((token) => token + 1);
+    }
   }
 
   function handleClearFile(event: React.MouseEvent) {
@@ -277,6 +286,31 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    syncPreference();
+    mediaQuery.addEventListener("change", syncPreference);
+    return () => mediaQuery.removeEventListener("change", syncPreference);
+  }, []);
+
+  useEffect(() => {
+    if (uploadScanToken === 0 || prefersReducedMotion) {
+      setShowUploadScan(false);
+      return;
+    }
+
+    setShowUploadScan(true);
+    const timer = window.setTimeout(() => {
+      setShowUploadScan(false);
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [uploadScanToken, prefersReducedMotion]);
+
   async function handleGenerate() {
     if (!selectedFile || isLoading) return;
 
@@ -305,6 +339,7 @@ export default function Home() {
       }
 
       setAltText(data.altText);
+      setResultRevealKey((current) => current + 1);
     } catch {
       setErrorMessage("生成失败，请重试");
     } finally {
@@ -340,41 +375,61 @@ export default function Home() {
   const charCount = altText.length;
   const isTooLong = charCount > 125;
 
+  const secondaryButtonClassName =
+    "rounded-lg border border-[var(--border-subtle)] bg-transparent px-3 py-1.5 text-sm text-foreground transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--control-bg)] disabled:cursor-not-allowed disabled:opacity-50";
+
   return (
-    <div className="home-gradient-bg min-h-screen overflow-x-hidden px-4 py-8 font-sans sm:px-6 sm:py-10">
+    <div className="home-gradient-bg min-h-screen overflow-x-hidden px-4 py-8 font-sans text-foreground sm:px-6 sm:py-10">
       <main className="mx-auto w-full max-w-[1200px]">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[2fr_3fr] md:items-start md:gap-8 lg:gap-10">
-          <aside className="min-w-0 md:pt-2">
-            <p className="text-sm font-medium text-theme dark:text-theme-hover">
-              Alt Text Pro
-            </p>
-            <h1 className="mt-3 text-2xl font-semibold leading-snug text-zinc-900 dark:text-zinc-100 sm:text-3xl">
-              让每一张图片，都能被理解
-            </h1>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base">
-              AI 生成清晰、准确、可编辑的图片替代文本。
-            </p>
-            <ul className="mt-6 flex flex-col gap-3">
-              {["快速生成", "结果可编辑", "适用于无障碍与 SEO"].map(
-                (point) => (
-                  <li
-                    key={point}
-                    className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-theme"
-                    />
-                    <span>{point}</span>
-                  </li>
-                ),
-              )}
-            </ul>
+          <aside className="lab-panel min-w-0 md:pt-2">
+            <div className="lab-panel__decor" aria-hidden="true">
+              <div className="lab-panel__grid" />
+              <div className="lab-panel__frame" />
+              <div className="lab-panel__corners">
+                <span />
+                <span />
+              </div>
+              <p className="absolute top-3 right-4 font-mono text-[10px] tracking-[0.18em] text-theme/50 uppercase">
+                SCAN // 40.12 N
+              </p>
+              <p className="absolute bottom-3 left-4 font-mono text-[10px] tracking-[0.16em] text-accent/45 uppercase">
+                GRID 28px · LAB-01
+              </p>
+            </div>
+
+            <div className="lab-panel__content">
+              <p className="font-mono text-xs font-medium tracking-[0.2em] text-theme uppercase">
+                Alt Text Pro
+              </p>
+              <h1 className="mt-3 text-[2rem] leading-[1.15] font-semibold text-foreground md:text-[3.25rem] lg:text-[4rem]">
+                让每一张图片，都能被理解
+              </h1>
+              <p className="mt-4 text-base leading-relaxed text-muted md:text-lg">
+                AI 生成清晰、准确、可编辑的图片替代文本。
+              </p>
+              <ul className="mt-6 flex flex-col gap-3">
+                {["快速生成", "结果可编辑", "适用于无障碍与 SEO"].map(
+                  (point) => (
+                    <li
+                      key={point}
+                      className="flex items-start gap-2 text-base text-foreground"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-theme"
+                      />
+                      <span>{point}</span>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
           </aside>
 
-          <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <section className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-surface p-4 sm:p-6">
             <div className="flex flex-col gap-4">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 sm:text-xl">
+              <h2 className="text-lg font-semibold text-foreground sm:text-xl">
                 Alt Text Pro —— Free AI Alt Text Generator!
               </h2>
 
@@ -427,12 +482,12 @@ export default function Home() {
                 }}
                 className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed text-center transition-colors ${
                   isDragging && !isLoading
-                    ? `border-theme bg-theme/10 ring-2 ring-theme/20 ${previewUrl ? "p-2" : "px-4 py-8"}`
+                    ? `border-theme bg-theme/10 ${previewUrl ? "p-2" : "px-4 py-8"}`
                     : previewUrl
-                      ? "border-zinc-200 p-2 dark:border-zinc-800"
+                      ? "border-[var(--border-subtle)] p-2"
                       : isLoading
-                        ? "cursor-not-allowed border-zinc-300 px-4 py-8 opacity-70 dark:border-zinc-700"
-                        : "cursor-pointer border-zinc-300 px-4 py-8 hover:border-theme hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                        ? "cursor-not-allowed border-[var(--border-subtle)] px-4 py-8 opacity-70"
+                        : "cursor-pointer border-[var(--border-subtle)] px-4 py-8 hover:border-theme hover:bg-[var(--control-bg)]"
                 }`}
               >
                 <input
@@ -453,7 +508,7 @@ export default function Home() {
                       onClick={handleClearFile}
                       disabled={isLoading}
                       aria-label="删除图片"
-                      className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/70 text-sm text-white transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100/80 dark:text-zinc-900 dark:hover:bg-zinc-100"
+                      className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--control-bg)] text-sm text-foreground transition-colors hover:border-theme disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       ×
                     </button>
@@ -465,10 +520,35 @@ export default function Home() {
                         className="object-contain"
                         unoptimized
                       />
+                      <div className="preview-effects absolute inset-0" aria-hidden="true">
+                        {showUploadScan ? (
+                          <div
+                            key={uploadScanToken}
+                            className="preview-scan-line"
+                          />
+                        ) : null}
+                        {isLoading && !prefersReducedMotion ? (
+                          <svg
+                            className="preview-tracking h-full w-full"
+                            viewBox="0 0 100 100"
+                            preserveAspectRatio="none"
+                          >
+                            <rect
+                              className="preview-tracking__stroke"
+                              x="1.2"
+                              y="1.2"
+                              width="97.6"
+                              height="97.6"
+                              rx="1.5"
+                              pathLength="148"
+                            />
+                          </svg>
+                        ) : null}
+                      </div>
                     </div>
                     {isDragging && !isLoading ? (
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-theme/10">
-                        <p className="rounded-md bg-white/90 px-3 py-1.5 text-sm font-medium text-zinc-800 dark:bg-zinc-900/90 dark:text-zinc-100">
+                        <p className="rounded-md border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-sm font-medium text-foreground">
                           松开以替换图片
                         </p>
                       </div>
@@ -476,13 +556,13 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    <p className="text-base font-medium text-foreground">
                       {isDragging
                         ? "松开鼠标以上传图片"
                         : "点击或拖拽图片到此处上传"}
                     </p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      支持 JPG、JPEG、PNG、WebP，单张不超过 50MB
+                    <p className="font-mono text-xs tracking-wide text-muted">
+                      JPG / JPEG / PNG / WEBP · MAX 50MB
                     </p>
                   </>
                 )}
@@ -491,21 +571,19 @@ export default function Home() {
               {uploadError ? (
                 <div
                   role="alert"
-                  className="flex gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950/30"
+                  className="flex gap-3 rounded-md border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2"
                 >
                   <span
                     aria-hidden="true"
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-amber-500 text-xs font-semibold text-amber-700 dark:border-amber-400 dark:text-amber-300"
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent font-mono text-xs font-semibold text-accent"
                   >
                     !
                   </span>
                   <div className="flex min-w-0 flex-col gap-1 text-sm">
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                    <p className="font-medium text-foreground">
                       {uploadError.title}
                     </p>
-                    <p className="text-zinc-600 dark:text-zinc-300">
-                      {uploadError.recovery}
-                    </p>
+                    <p className="text-muted">{uploadError.recovery}</p>
                   </div>
                 </div>
               ) : null}
@@ -541,16 +619,18 @@ export default function Home() {
                 type="button"
                 onClick={handleGenerate}
                 disabled={!selectedFile || isLoading}
-                className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold transition-colors disabled:cursor-not-allowed ${
                   isGenerateEnabled
-                    ? "bg-theme text-white hover:bg-theme-hover"
-                    : "bg-zinc-300 text-zinc-500 opacity-70 dark:bg-zinc-700 dark:text-zinc-400"
+                    ? "bg-theme text-theme-ink hover:bg-theme-hover"
+                    : "bg-[var(--control-bg)] text-muted opacity-70"
                 }`}
               >
                 {isLoading ? (
                   <>
                     <LoadingSpinner />
-                    正在分析图像…
+                    <span className="font-mono text-sm tracking-wide">
+                      正在分析图像…
+                    </span>
                   </>
                 ) : (
                   "生成 alt text"
@@ -559,14 +639,17 @@ export default function Home() {
 
               {errorMessage ? (
                 <div className="flex flex-col gap-2">
-                  <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-200">
-                    {errorMessage}
+                  <p className="rounded-md border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2 text-sm text-foreground">
+                    <span className="font-mono text-xs text-accent uppercase">
+                      Error
+                    </span>
+                    <span className="mt-1 block">{errorMessage}</span>
                   </p>
                   {selectedFile && !isLoading && !altText ? (
                     <button
                       type="button"
                       onClick={handleGenerate}
-                      className="self-start rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-800 dark:border-zinc-700 dark:text-zinc-200"
+                      className={secondaryButtonClassName}
                     >
                       重新尝试
                     </button>
@@ -575,8 +658,13 @@ export default function Home() {
               ) : null}
 
               {altText ? (
-                <section className="flex flex-col gap-2">
-                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <section
+                  key={resultRevealKey}
+                  className={`flex flex-col gap-2 ${
+                    prefersReducedMotion ? "" : "result-reveal"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">
                     生成结果
                   </p>
                   <textarea
@@ -585,17 +673,18 @@ export default function Home() {
                       setAltText(event.target.value);
                       setCopySuccess(false);
                     }}
-                    className="min-h-24 w-full rounded-lg border border-zinc-300 p-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    className="min-h-24 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--control-bg)] p-3 text-base text-foreground"
                   />
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {charCount} 字 · {isTooLong ? "描述可能过长" : "长度适中"}
+                  <p className="font-mono text-xs tracking-wide text-muted">
+                    {charCount} CHARS ·{" "}
+                    {isTooLong ? "描述可能过长" : "长度适中"}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={handleCopy}
                       disabled={!altText}
-                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200"
+                      className={secondaryButtonClassName}
                     >
                       {copySuccess ? "已复制" : "复制结果"}
                     </button>
@@ -603,7 +692,7 @@ export default function Home() {
                       type="button"
                       onClick={handleGenerate}
                       disabled={!selectedFile || isLoading}
-                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200"
+                      className={secondaryButtonClassName}
                     >
                       重新生成
                     </button>
@@ -611,7 +700,7 @@ export default function Home() {
                       type="button"
                       onClick={handleUploadNext}
                       disabled={isLoading}
-                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200"
+                      className={secondaryButtonClassName}
                     >
                       上传下一张
                     </button>
